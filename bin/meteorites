@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Compute dataset count, max mass, and most frequent year using `jq`.
+
+usage() {
+  cat <<'EOF'
+Usage:
+  bin/meteorites [--file PATH] [--json]
+
+Computes:
+  - number of entries
+  - most massive meteorite (name + mass in grams)
+  - most frequent year (YYYY)
+
+Options:
+  --file PATH   Read dataset from a local JSON file (default: docs/meteorite_landings.json)
+  --json        Print machine-readable JSON output
+  -h, --help    Show this help
+EOF
+}
+
+# Default dataset path (override with `--file`)
+json_file="docs/meteorite_landings.json"
+
+# Output mode: "0" = readable, "1" = JSON (for tests/automation)
+output_json="0"
+
+# Parse CLI arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --file)
+      json_file="${2:-}"; shift 2
+      ;;
+    --json)
+      output_json="1"; shift
+      ;;
+    -h|--help)
+      usage; exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+# Dependency check
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Missing dependency: jq" >&2
+  exit 127
+fi
+
+# Resolve input dataset path
+input_path="${json_file}"
+
+# Validate input dataset exists
+if [[ ! -f "${input_path}" ]]; then
+  echo "Dataset not found: ${input_path}" >&2
+  exit 1
+fi
+
+# 1) Count entries (JSON array length)
+count="$(jq 'length' "${input_path}")"
+
+# 2) Find the maximum numeric mass (grams)
+max_json="$(jq -c '
+  [.[] | select(.mass? and (.mass|tostring|length>0)) | {name, mass_g: (.mass|tonumber?)}]
+  | map(select(.mass_g != null))
+  | max_by(.mass_g)
+' "${input_path}")"
+
+# 3) Find the most frequent year (first 4 chars of 'year')
+mode_json="$(jq -c '
+  [.[] | .year? | select(type=="string" and length>=4) | .[0:4]]
+  | group_by(.)
+  | map({year: .[0], count: length})
+  | max_by(.count)
+' "${input_path}")"
+
+# JSON output
+if [[ "${output_json}" == "1" ]]; then
+  jq -cn \
+    --argjson count "${count}" \
+    --argjson max "${max_json}" \
+    --argjson mode "${mode_json}" \
+    '{count: $count, max_mass: {name: $max.name, mass_g: $max.mass_g}, most_frequent_year: {year: $mode.year, count: $mode.count}}'
+  exit 0
+fi
+
+# Output
+max_name="$(jq -r '.name' <<<"${max_json}")"
+max_mass_g="$(jq -r '.mass_g' <<<"${max_json}")"
+mode_year="$(jq -r '.year' <<<"${mode_json}")"
+mode_count="$(jq -r '.count' <<<"${mode_json}")"
+
+printf '1) Total entries: %s\n' "${count}"
+printf '2) Heaviest: %s (%sg)\n' "${max_name}" "${max_mass_g}"
+printf '3) Most frequent year: %s (%s entries)\n' "${mode_year}" "${mode_count}"
+

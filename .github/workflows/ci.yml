@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show tool versions
+        run: |
+          bash --version
+          jq --version
+          python --version
+
+      - name: Run CLI (human output)
+        run: |
+          chmod +x bin/meteorites
+          bin/meteorites --file docs/meteorite_landings.json
+
+      - name: Run unit tests
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py' -v
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t meteorites:ci .
+
+      - name: Run image
+        run: docker run --rm meteorites:ci --file /app/docs/meteorite_landings.json --json
+
