@@ -11,10 +11,8 @@ Extract programmatically the list of Earth Meteorite Landings from this dataset:
 **NOTE:** Please elaborate how did you get the results, provide the code or any means which you used to get to the results (regardless of the format/tools/framework which were used). Result itself is not sufficient.
 
 ---
-<<<<<<< HEAD
-=======
 
-## Simple solution (Bash + jq)
+## Solution (Bash + jq)
 
 The dataset is already included in this repo as `docs/meteorite_landings.json` (a JSON array of meteorite objects).
 
@@ -225,5 +223,3 @@ The test file is `tests/test_cli.py`. It validates two things:
   - most frequent year is `1933` with `16` entries
 
 So it’s not just “did the script run?” — it also confirms the computed answers match the known expected results for `docs/meteorite_landings.json`.
-
->>>>>>> b7351b1 (Solution for the task)
