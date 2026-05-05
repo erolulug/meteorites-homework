@@ -73,7 +73,7 @@ max_json="$(jq -c '
 
 # 3) Find the most frequent year (first 4 chars of 'year')
 mode_json="$(jq -c '
-  [.[] | .year? | select(type=="string" and length>=4) | .[0:4]]
+  [.[] | .year? | select(type=="string" and length<=4) | .[0:4]]
   | group_by(.)
   | map({year: .[0], count: length})
   | max_by(.count)
